@@ -40,7 +40,7 @@ class AllTests(unittest.TestCase):
         return self.app.get('logout/', follow_redirects=True)
 
     def create_user(self, name, email, password):
-        new_user = user(name=name, email=email, password=password)
+        new_user = User(name=name, email=email, password=password)
         db.session.add(new_user)
         db.session.commit()
 
@@ -67,7 +67,7 @@ class AllTests(unittest.TestCase):
     def test_form_is_present(self):
         response = self.app.get('/')
         self.assertEqual(response.status_code, 200)
-        self.assertIn(b'Please login to access your task list', response.data)
+        self.assertIn(b'Please sign in to access your task list', response.data)
 
     def test_users_cannot_login_unless_registered(self):
         response = self.login('foo', 'bar')
@@ -158,10 +158,42 @@ class AllTests(unittest.TestCase):
         self.create_user('Fletcher', 'fletcher@realpython.com', 'python101')
         self.login('Fletcher', 'python101')
         self.app.get('tasks/', follow_redirects=True)
+        response = self.app.get("complete/1/", follow_redirects=True)
         self.assertNotIn(
             b'The task is complete', response.data
         )
+        self.assertIn(
+            b'You can only update tasks that belong to you.', response.data
+        )
 
+    def test_users_cannot_delete_tasks_that_are_not_created_by_them(self):
+        self.create_user('Michael', 'michael@realpython.com', 'python')
+        self.login('Michael', 'python')
+        self.app.get('tasks/', follow_redirects=True)
+        self.create_task()
+        self.logout()
+        self.create_user('Fletcher', 'fletcher@realpython.com', 'python101')
+        self.login('Fletcher', 'python101')
+        self.app.get('tasks/', follow_redirects=True)
+        response = self.app.get("delete/1/", follow_redirects=True)
+        self.assertIn(
+            b'You can only delete tasks that belong to you', response.data
+        )
+
+    def test_default_user_role(self):
+        db.session.add(
+            User(
+                "Johnny",
+                "john@doe.com",
+                "johnny"
+            )
+        )
+
+        db.session.commit()
+        users = db.session.query(User).all()
+        print(users)
+        for user in users:
+            self.assertEquals(user.role, 'user')
 
 if __name__ == "__main__":
     unittest.main()
