@@ -3,6 +3,7 @@
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from flask_bcrypt import Bcrypt
+from flask import render_template
 
 app = Flask(__name__)
 app.config.from_pyfile('_config.py')
@@ -14,3 +15,7 @@ from project.tasks.views import tasks_blueprint
 
 app.register_blueprint(users_blueprint)
 app.register_blueprint(tasks_blueprint)
+
+@app.errorhandler(404)
+def not_found(error):
+    return render_template('404.html'), 404
